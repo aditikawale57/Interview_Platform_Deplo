@@ -42,7 +42,9 @@ public class StudentApplication {
 
     @PrePersist
     public void onCreate() {
-        this.appliedAt = LocalDateTime.now();
+        if (this.appliedAt == null) {
+            this.appliedAt = LocalDateTime.now();
+        }
         if (this.status == null) {
             this.status = Status.PENDING;
         }

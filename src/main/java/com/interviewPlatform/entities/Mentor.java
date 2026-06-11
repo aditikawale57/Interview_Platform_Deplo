@@ -49,7 +49,9 @@ public class Mentor {
 
     @PrePersist
     public void onCreate(){
-        this.createdAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
     
 }
