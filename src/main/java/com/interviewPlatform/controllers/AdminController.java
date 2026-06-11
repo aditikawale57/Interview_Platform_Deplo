@@ -249,9 +249,9 @@ public class AdminController {
             avgRating = Math.round(avgRating * 10.0) / 10.0;
         }
 
-        // Compute completion rate: 
-        // For simplicity, returning 100 if there are conducted interviews, or placeholder
-        int completionRate = interviewsConducted > 0 ? 100 : 0; 
+        long totalAssigned = studentApplicationRepository.findAll().stream()
+            .filter(a -> a.getAssignedInterviewer() != null && a.getAssignedInterviewer().getId().equals(id)).count();
+        int completionRate = totalAssigned > 0 ? (int) Math.round((double) interviewsConducted / totalAssigned * 100) : 0;
         
         List<Map<String, Object>> feedbacks = ratings.stream().map(r -> {
             Map<String, Object> map = new LinkedHashMap<>();
@@ -393,10 +393,10 @@ public class AdminController {
         List<Map<String, Object>> topInterviewers = interviewers.stream()
             .filter(iv -> iv.getUser() != null && iv.getUser().getStatus() == Status.ACTIVE)
             .map(iv -> {
-                long ivEvals = evals.stream().filter(e -> e.getInterviewer().getId().equals(iv.getId())).count();
-                double ivScore = evals.stream().filter(e -> e.getInterviewer().getId().equals(iv.getId()))
+                long ivEvals = evals.stream().filter(e -> e.getInterviewer() != null && e.getInterviewer().getId().equals(iv.getId())).count();
+                double ivScore = evals.stream().filter(e -> e.getInterviewer() != null && e.getInterviewer().getId().equals(iv.getId()) && e.getOverallScore() != null)
                     .mapToDouble(InterviewEvaluation::getOverallScore).average().orElse(0.0);
-                double ivRating = ratings.stream().filter(r -> r.getInterviewer().getId().equals(iv.getId()))
+                double ivRating = ratings.stream().filter(r -> r.getInterviewer() != null && r.getInterviewer().getId().equals(iv.getId()) && r.getRating() != null)
                     .mapToInt(StudentInterviewerRating::getRating).average().orElse(0.0);
                 
                 Map<String, Object> map = new LinkedHashMap<>();
@@ -404,7 +404,9 @@ public class AdminController {
                 map.put("domain", iv.getDomain() != null ? iv.getDomain() : "General");
                 map.put("interviews", ivEvals);
                 map.put("avgScore", Math.round(ivScore * 10.0) / 10.0);
-                map.put("completionPct", 100); // Placeholder for actual completion % logic
+                long assignedApps = apps.stream().filter(a -> a.getAssignedInterviewer() != null && a.getAssignedInterviewer().getId().equals(iv.getId())).count();
+                int ivCompletion = assignedApps > 0 ? (int) Math.round((double) ivEvals / assignedApps * 100) : 0;
+                map.put("completionPct", ivCompletion);
                 map.put("rating", Math.round(ivRating * 10.0) / 10.0);
                 return map;
             })
@@ -421,17 +423,18 @@ public class AdminController {
         result.put("interviewer", interviewerData);
 
         // --- INSTITUTE TAB ---
-        double globalAvgScore = evals.stream().mapToDouble(InterviewEvaluation::getOverallScore).average().orElse(0.0);
+        double globalAvgScore = evals.stream().filter(e -> e.getOverallScore() != null).mapToDouble(InterviewEvaluation::getOverallScore).average().orElse(0.0);
         
         List<Map<String, Object>> instituteSummary = institutes.stream().map(inst -> {
-            long students = inst.getStudentStrength() != null ? inst.getStudentStrength() : 0;
+            long students = studentRepository.findAll().stream().filter(s -> s.getInstitute() != null && s.getInstitute().getId().equals(inst.getId())).count();
             // Get evaluations for this institute's students
             List<InterviewEvaluation> instEvals = evals.stream()
-                .filter(e -> e.getApplication().getStudent().getInstitute() != null 
+                .filter(e -> e.getApplication() != null && e.getApplication().getStudent() != null 
+                    && e.getApplication().getStudent().getInstitute() != null 
                     && e.getApplication().getStudent().getInstitute().getId().equals(inst.getId()))
                 .toList();
-            double instScore = instEvals.stream().mapToDouble(InterviewEvaluation::getOverallScore).average().orElse(0.0);
-            long depts = instEvals.stream().map(e -> e.getApplication().getStudent().getDepartment()).distinct().count();
+            double instScore = instEvals.stream().filter(e -> e.getOverallScore() != null).mapToDouble(InterviewEvaluation::getOverallScore).average().orElse(0.0);
+            long depts = instEvals.stream().filter(e -> e.getApplication().getStudent().getDepartment() != null).map(e -> e.getApplication().getStudent().getDepartment()).distinct().count();
             
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("name", inst.getInstituteName());
@@ -448,21 +451,23 @@ public class AdminController {
         result.put("institute", instituteData);
 
         // --- STUDENT TAB ---
-        long highScorers = evals.stream().filter(e -> e.getOverallScore() >= 8.0).count();
+        long highScorers = evals.stream().filter(e -> e.getOverallScore() != null && e.getOverallScore() >= 8.0).count();
         
         // Group evaluations by student to get their performance
         Map<Long, List<InterviewEvaluation>> evalsByStudent = new LinkedHashMap<>();
         evals.forEach(e -> {
-            Long sId = e.getApplication().getStudent().getId();
-            evalsByStudent.computeIfAbsent(sId, k -> new ArrayList<>()).add(e);
+            if (e.getApplication() != null && e.getApplication().getStudent() != null) {
+                Long sId = e.getApplication().getStudent().getId();
+                evalsByStudent.computeIfAbsent(sId, k -> new ArrayList<>()).add(e);
+            }
         });
         
         List<Map<String, Object>> studentPerformance = evalsByStudent.entrySet().stream()
             .map(entry -> {
                 List<InterviewEvaluation> sEvals = entry.getValue();
                 var student = sEvals.get(0).getApplication().getStudent();
-                double sAvg = sEvals.stream().mapToDouble(InterviewEvaluation::getOverallScore).average().orElse(0.0);
-                double sBest = sEvals.stream().mapToDouble(InterviewEvaluation::getOverallScore).max().orElse(0.0);
+                double sAvg = sEvals.stream().filter(e -> e.getOverallScore() != null).mapToDouble(InterviewEvaluation::getOverallScore).average().orElse(0.0);
+                double sBest = sEvals.stream().filter(e -> e.getOverallScore() != null).mapToDouble(InterviewEvaluation::getOverallScore).max().orElse(0.0);
                 
                 Map<String, Object> map = new LinkedHashMap<>();
                 map.put("name", student.getFirstName() + " " + student.getLastName());
@@ -471,17 +476,23 @@ public class AdminController {
                 map.put("interviews", sEvals.size());
                 map.put("avgScore", Math.round(sAvg * 10.0) / 10.0);
                 map.put("best", Math.round(sBest * 10.0) / 10.0);
-                map.put("trend", sEvals.size() > 1 && sEvals.get(sEvals.size() - 1).getOverallScore() > sEvals.get(0).getOverallScore() ? "up" : "flat");
+                boolean trendUp = false;
+                if (sEvals.size() > 1) {
+                    Double firstScore = sEvals.get(0).getOverallScore();
+                    Double lastScore = sEvals.get(sEvals.size() - 1).getOverallScore();
+                    trendUp = firstScore != null && lastScore != null && lastScore > firstScore;
+                }
+                map.put("trend", trendUp ? "up" : "flat");
                 return map;
             })
             .sorted((Map<String, Object> a, Map<String, Object> b) -> Double.compare((Double) b.get("avgScore"), (Double) a.get("avgScore"))) // Sort by score
             .limit(10)
             .toList();
 
-        long dist0_4 = evals.stream().filter(e -> e.getOverallScore() < 5.0).count();
-        long dist5_6 = evals.stream().filter(e -> e.getOverallScore() >= 5.0 && e.getOverallScore() < 7.0).count();
-        long dist7_8 = evals.stream().filter(e -> e.getOverallScore() >= 7.0 && e.getOverallScore() < 9.0).count();
-        long dist9_10 = evals.stream().filter(e -> e.getOverallScore() >= 9.0).count();
+        long dist0_4 = evals.stream().filter(e -> e.getOverallScore() != null && e.getOverallScore() < 5.0).count();
+        long dist5_6 = evals.stream().filter(e -> e.getOverallScore() != null && e.getOverallScore() >= 5.0 && e.getOverallScore() < 7.0).count();
+        long dist7_8 = evals.stream().filter(e -> e.getOverallScore() != null && e.getOverallScore() >= 7.0 && e.getOverallScore() < 9.0).count();
+        long dist9_10 = evals.stream().filter(e -> e.getOverallScore() != null && e.getOverallScore() >= 9.0).count();
 
         Map<String, Object> studentData = new LinkedHashMap<>();
         studentData.put("highScorers", highScorers);

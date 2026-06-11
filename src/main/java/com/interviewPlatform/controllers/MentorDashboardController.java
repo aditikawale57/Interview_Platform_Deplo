@@ -102,7 +102,7 @@ public class MentorDashboardController {
                     resumeUrl,
                     s.getProjects(),
                     applicationRepository.findByStudentId(s.getId()).stream()
-                        .filter(a -> a.getStatus() == Status.APPROVED && 
+                        .filter(a -> (a.getStatus() == Status.APPROVED || a.getStatus() == Status.COMPLETED) && 
                                      a.getInterviewRequest() != null && 
                                      a.getInterviewRequest().getStatus() == Status.COMPLETED)
                         .count(),

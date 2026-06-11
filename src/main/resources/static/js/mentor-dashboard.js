@@ -108,7 +108,8 @@ async function renderStudentsTable() {
         const safeResume = (s.resumeUrl || '').replace(/'/g, "\\'");
         const safeResumeFile = (s.resumeFileName || '').replace(/'/g, "\\'");
 
-        return `<tr data-status="Not Evaluated" data-class="${cls}" data-name="${name.toLowerCase()}">
+        const statusStr = s.averageScore != null ? 'Evaluated' : 'Not Evaluated';
+        return `<tr data-status="${statusStr}" data-class="${cls}" data-name="${name.toLowerCase()}">
             <td><b>${name}</b></td>
             <td>${cls}</td>
             <td style="font-size:12px;">${email}</td>
@@ -195,12 +196,16 @@ function renderReportStudentTable() {
         const safeResume = (s.resumeUrl || '').replace(/'/g, "\\'");
         const safeResumeFile = (s.resumeFileName || '').replace(/'/g, "\\'");
 
+        const statusHtml = s.averageScore != null 
+            ? '<span class="badge bg-success"><i class="fa-solid fa-check-circle"></i> Evaluated</span>' 
+            : '<span class="badge bg-gray"><i class="fa-solid fa-clock"></i> Not Evaluated</span>';
+
         return `<tr>
             <td><b>${name}</b></td>
             <td>${cls}</td>
             <td style="font-size:12px;">${email}</td>
             <td style="font-size:12px;">${avgScoreText}</td>
-            <td><span class="badge bg-gray"><i class="fa-solid fa-clock"></i> Not Evaluated</span></td>
+            <td>${statusHtml}</td>
             <td>
                 <button class="btn btn-ghost btn-sm"
                     onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}','${skills}','${safeResume}','${safeResumeFile}','${s.profilePhotoUrl || ''}')">
@@ -216,15 +221,22 @@ function updateAllStats() {
     const total = departmentStudents.length;
     const withSkills = departmentStudents.filter(function(s) { return s.skills && s.skills.length > 0; }).length;
 
+    const totalDone = departmentStudents.reduce((sum, s) => sum + (s.interviewsTaken || 0), 0);
+    const evaluatedCount = departmentStudents.filter(s => s.averageScore != null).length;
+    const notEvaluatedCount = total - evaluatedCount;
+    
     // Overview stats
     const se = document.getElementById('statTotalStudents');
     const sc = document.getElementById('statScheduled');
     const sco = document.getElementById('statCompleted');
     const sa = document.getElementById('statAvgScore');
     if (se) se.textContent = total;
-    if (sc) sc.textContent = '0';
-    if (sco) sco.textContent = '0';
-    if (sa) sa.textContent = '—';
+    if (sco) sco.textContent = totalDone;
+    // Avg score across all students
+    let sumScore = 0, countScore = 0;
+    departmentStudents.forEach(s => { if(s.averageScore != null) { sumScore += s.averageScore; countScore++; } });
+    const overallAvg = countScore > 0 ? (sumScore / countScore).toFixed(1) : '—';
+    if (sa) sa.textContent = overallAvg;
 
     // Distribution badge
     const db = document.getElementById('distBadge');
@@ -235,10 +247,10 @@ function updateAllStats() {
     const rt = document.getElementById('reportTotal');
     const rd = document.getElementById('reportDone');
     const rne = document.getElementById('reportNotEval');
-    if (ra) ra.textContent = '—';
+    if (ra) ra.textContent = overallAvg;
     if (rt) rt.textContent = total;
-    if (rd) rd.textContent = '0';
-    if (rne) rne.textContent = total;
+    if (rd) rd.textContent = totalDone;
+    if (rne) rne.textContent = notEvaluatedCount;
 
     // Activity summary
     const at = document.getElementById('actTotal');
@@ -246,7 +258,7 @@ function updateAllStats() {
     const ane = document.getElementById('actNotEval');
     if (at) at.textContent = total;
     if (aws) aws.textContent = withSkills;
-    if (ane) ane.textContent = total;
+    if (ane) ane.textContent = notEvaluatedCount;
 }
 
 /* ===== OPEN STUDENT DETAIL MODAL ===== */

@@ -50,7 +50,7 @@ public class StudentDashboardController {
 
         // interviewsTaken = interviews the student has actually completed
         long interviewsTaken = myApplications.stream()
-            .filter(a -> a.getStatus() == Status.APPROVED && 
+            .filter(a -> (a.getStatus() == Status.APPROVED || a.getStatus() == Status.COMPLETED) && 
                          a.getInterviewRequest() != null && 
                          a.getInterviewRequest().getStatus() == Status.COMPLETED)
             .count();
@@ -71,7 +71,7 @@ public class StudentDashboardController {
             : evalScores.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
 
         List<StudentDashboardStatsDTO.StudentInterviewItemDTO> interviewItems = myApplications.stream()
-            .filter(a -> a.getStatus() == Status.APPROVED)
+            .filter(a -> a.getStatus() == Status.APPROVED || a.getStatus() == Status.COMPLETED)
             .map(app -> {
                 InterviewRequest req = app.getInterviewRequest();
                 var scheduled = req.getScheduledDate() != null ? req.getScheduledDate() : req.getStartDate();
