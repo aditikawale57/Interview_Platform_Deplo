@@ -15,7 +15,9 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import org.springframework.core.io.ClassPathResource;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -214,14 +216,32 @@ public class DataSeeder implements CommandLineRunner {
             }
             Path dummyResume = resumesDir.resolve("dummy_resume.pdf");
             if (!Files.exists(dummyResume)) {
-                Files.write(dummyResume, "%PDF-1.4\n%Dummy PDF\n".getBytes());
+                try {
+                    ClassPathResource resource = new ClassPathResource("dummy_resume.pdf");
+                    if (resource.exists()) {
+                        Files.copy(resource.getInputStream(), dummyResume, StandardCopyOption.REPLACE_EXISTING);
+                    } else {
+                        Files.write(dummyResume, "%PDF-1.4\n%Dummy PDF\n".getBytes());
+                    }
+                } catch (Exception e) {
+                    Files.write(dummyResume, "%PDF-1.4\n%Dummy PDF\n".getBytes());
+                }
             }
             
             // Because the code might refer to uploads/dummy_resume.pdf or uploads/resumes/dummy_resume.pdf, 
             // let's place one in the root of uploads too.
             Path dummyResumeRoot = uploadsDir.resolve("dummy_resume.pdf");
             if (!Files.exists(dummyResumeRoot)) {
-                Files.write(dummyResumeRoot, "%PDF-1.4\n%Dummy PDF\n".getBytes());
+                try {
+                    ClassPathResource resource = new ClassPathResource("dummy_resume.pdf");
+                    if (resource.exists()) {
+                        Files.copy(resource.getInputStream(), dummyResumeRoot, StandardCopyOption.REPLACE_EXISTING);
+                    } else {
+                        Files.write(dummyResumeRoot, "%PDF-1.4\n%Dummy PDF\n".getBytes());
+                    }
+                } catch (Exception e) {
+                    Files.write(dummyResumeRoot, "%PDF-1.4\n%Dummy PDF\n".getBytes());
+                }
             }
 
             Path dummyVideo = uploadsDir.resolve("dummy_video.mp4");
