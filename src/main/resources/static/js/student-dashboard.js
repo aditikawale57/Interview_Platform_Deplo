@@ -107,7 +107,8 @@ async function loadDashboardStats() {
         scheduledDate: iv.scheduledDate,
         meetingLink: iv.meetingLink,
         scheduledVenue: iv.scheduledVenue,
-        assignedInterviewerName: iv.assignedInterviewerName
+        assignedInterviewerName: iv.assignedInterviewerName,
+        overallScore: iv.overallScore
       };
     });
     if (DASHBOARD_STATS.projects) STUDENT.projects = DASHBOARD_STATS.projects;

@@ -101,7 +101,15 @@ public class DataSeeder implements CommandLineRunner {
         // 7. Create Dummy Data for last 3 months
         Random random = new Random();
         for (int i = 0; i < 15; i++) {
-            LocalDateTime randomDate = LocalDateTime.now().minusDays(random.nextInt(90));
+            boolean isCompleted = i < 12;
+            LocalDateTime randomDate;
+            if (isCompleted) {
+                // Past dates: between 3 and 90 days ago
+                randomDate = LocalDateTime.now().minusDays(random.nextInt(88) + 3);
+            } else {
+                // Future dates: between 1 and 14 days in the future
+                randomDate = LocalDateTime.now().plusDays(random.nextInt(14) + 1);
+            }
 
             // Create Request
             InterviewRequest req = new InterviewRequest();
@@ -111,7 +119,7 @@ public class DataSeeder implements CommandLineRunner {
             req.setEndDate(randomDate.plusDays(2));
             req.setContactPerson("Rahul Sharma");
             req.setContactEmail("mentor1@platform.com");
-            req.setStatus(Status.COMPLETED);
+            req.setStatus(isCompleted ? Status.COMPLETED : Status.CONFIRMED);
             req.setInstitute(institute);
             req.setNumberOfInterviewers(1);
             req.setAssignedInterviewer(i % 2 == 0 ? int1 : int2);
@@ -121,31 +129,33 @@ public class DataSeeder implements CommandLineRunner {
             req.setCreatedAt(randomDate);
             interviewRequestRepository.save(req);
 
-            // Create Application
-            StudentApplication app1 = new StudentApplication();
-            app1.setStudent(i % 3 == 0 ? s1 : (i % 3 == 1 ? s2 : s3));
-            app1.setInterviewRequest(req);
-            app1.setAssignedInterviewer(req.getAssignedInterviewer());
-            app1.setStatus(Status.COMPLETED);
-            app1.setAppliedAt(randomDate.plusDays(1));
-            app1.setVideoUrl("dummy_video.mp4");
-            studentApplicationRepository.save(app1);
+            if (isCompleted) {
+                // Create Application
+                StudentApplication app1 = new StudentApplication();
+                app1.setStudent(i % 3 == 0 ? s1 : (i % 3 == 1 ? s2 : s3));
+                app1.setInterviewRequest(req);
+                app1.setAssignedInterviewer(req.getAssignedInterviewer());
+                app1.setStatus(Status.COMPLETED);
+                app1.setAppliedAt(randomDate.plusDays(1));
+                app1.setVideoUrl("dummy_video.mp4");
+                studentApplicationRepository.save(app1);
 
-            // Create Evaluation
-            InterviewEvaluation eval = new InterviewEvaluation();
-            eval.setApplication(app1);
-            eval.setInterviewer(req.getAssignedInterviewer());
-            eval.setTechnicalScore(7 + random.nextInt(4)); // 7-10
-            eval.setCommunicationScore(6 + random.nextInt(5)); // 6-10
-            eval.setDomainScore(7 + random.nextInt(4));
-            eval.setApproachScore(8 + random.nextInt(3));
-            eval.setConfidenceScore(7 + random.nextInt(4));
-            eval.setOverallPerformance(eval.getTechnicalScore() > 8 ? "Excellent" : "Good");
-            eval.setStrengths("Strong technical skills, good attitude.");
-            eval.setImprovements("Needs to work on system design concepts.");
-            eval.setOverallScore((eval.getTechnicalScore() + eval.getCommunicationScore() + eval.getDomainScore() + eval.getApproachScore() + eval.getConfidenceScore()) / 5.0);
-            eval.setCreatedAt(randomDate.plusDays(2));
-            interviewEvaluationRepository.save(eval);
+                // Create Evaluation
+                InterviewEvaluation eval = new InterviewEvaluation();
+                eval.setApplication(app1);
+                eval.setInterviewer(req.getAssignedInterviewer());
+                eval.setTechnicalScore(7 + random.nextInt(4)); // 7-10
+                eval.setCommunicationScore(6 + random.nextInt(5)); // 6-10
+                eval.setDomainScore(7 + random.nextInt(4));
+                eval.setApproachScore(8 + random.nextInt(3));
+                eval.setConfidenceScore(7 + random.nextInt(4));
+                eval.setOverallPerformance(eval.getTechnicalScore() > 8 ? "Excellent" : "Good");
+                eval.setStrengths("Strong technical skills, good attitude.");
+                eval.setImprovements("Needs to work on system design concepts.");
+                eval.setOverallScore((eval.getTechnicalScore() + eval.getCommunicationScore() + eval.getDomainScore() + eval.getApproachScore() + eval.getConfidenceScore()) / 5.0);
+                eval.setCreatedAt(randomDate.plusDays(2));
+                interviewEvaluationRepository.save(eval);
+            }
         }
 
         log.info("Data Seeder completed successfully!");
