@@ -38,8 +38,8 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        if (userRepository.findByEmail("admin@platform.com").isPresent()) {
-            log.info("Admin already exists. Skipping Data Seeder.");
+        if (userRepository.findByEmail("institute1@platform.com").isPresent()) {
+            log.info("Dummy data already exists. Skipping Data Seeder.");
             return;
         }
 
@@ -48,8 +48,10 @@ public class DataSeeder implements CommandLineRunner {
         // Ensure directories and dummy files exist
         setupDummyFiles();
 
-        // 1. Create Admin
-        User adminUser = createUser("admin@platform.com", "admin123", Role.ADMIN);
+        // 1. Create Admin (only if not present)
+        if (userRepository.findByEmail("admin@platform.com").isEmpty()) {
+            createUser("admin@platform.com", "admin123", Role.ADMIN);
+        }
 
         // 2. Create Institute
         User instUser = createUser("institute1@platform.com", "inst123", Role.INSTITUTE);
