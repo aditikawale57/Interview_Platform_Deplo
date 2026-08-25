@@ -1,4 +1,4 @@
-package com.interviewPlatform.filters;
+package com.interviewPlatform.security.jwt;
 
 import java.io.IOException;
 
@@ -13,7 +13,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.interviewPlatform.repositories.BlackListedTokenRepository;
 import com.interviewPlatform.services.Impl.CustomUserDetailsService;
-import com.interviewPlatform.services.Impl.JWTService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

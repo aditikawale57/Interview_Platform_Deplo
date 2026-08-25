@@ -1,5 +1,4 @@
-package com.interviewPlatform.services.Impl;
-
+package com.interviewPlatform.security.jwt;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;

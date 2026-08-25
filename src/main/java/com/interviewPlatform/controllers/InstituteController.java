@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.interviewPlatform.services.InstituteService;
 import com.interviewPlatform.services.MentorService;
-import com.interviewPlatform.services.Impl.JWTService;
+import com.interviewPlatform.security.jwt.JWTService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;

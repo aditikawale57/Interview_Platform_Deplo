@@ -2,7 +2,6 @@ package com.interviewPlatform.services.Impl;
 
 import java.util.Date;
 
-
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -20,6 +19,7 @@ import com.interviewPlatform.enums.Role;
 import com.interviewPlatform.enums.Status;
 import com.interviewPlatform.repositories.RefreshTokenRepository;
 import com.interviewPlatform.repositories.UserRepository;
+import com.interviewPlatform.security.jwt.JWTService;
 import com.interviewPlatform.services.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -30,10 +30,8 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authManager;
     private final JWTService jwtService;
-    private final  UserRepository userRepository;
+    private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-
-    
 
     @Override
     public RegisterResponse registerUser(RegisterRequest request) {
@@ -42,77 +40,71 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Email already exists");
         }
 
-        User user=new User();
+        User user = new User();
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRole(request.role());
         user.setStatus(Status.ACTIVE);
 
-       User savedUser= userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
         return new RegisterResponse(
-            savedUser.getId(),
-            savedUser.getEmail(),
-            savedUser.getRole()
-        );
+                savedUser.getId(),
+                savedUser.getEmail(),
+                savedUser.getRole());
 
     }
-
-
 
     @Override
     @Transactional
     public AuthResponse verify(LoginRequest request) {
-        //Authenticate User
-        Authentication authentication=authManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+        // Authenticate User
+        Authentication authentication = authManager
+                .authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
-             //Fetch role from DB
-        User dbUser = userRepository.findByEmail(request.email()).orElseThrow(() -> new RuntimeException("User not found"));
+        // Fetch role from DB
+        User dbUser = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if(authentication.isAuthenticated()){
-            //Generate both tokens
-        String accessToken = jwtService.generateAccessToken(dbUser.getEmail());
-        String refreshToken = jwtService.generateRefreshToken(dbUser.getEmail());
+        if (authentication.isAuthenticated()) {
+            // Generate both tokens
+            String accessToken = jwtService.generateAccessToken(dbUser.getEmail());
+            String refreshToken = jwtService.generateRefreshToken(dbUser.getEmail());
 
-        // Block pending/rejected interviewers from logging in
-        if (dbUser.getRole() == Role.INTERVIEWER) {
-            if (dbUser.getStatus() == Status.PENDING) {
-                throw new RuntimeException("Your account is under review. Please wait for admin approval.");
+            // Block pending/rejected interviewers from logging in
+            if (dbUser.getRole() == Role.INTERVIEWER) {
+                if (dbUser.getStatus() == Status.PENDING) {
+                    throw new RuntimeException("Your account is under review. Please wait for admin approval.");
+                }
+                if (dbUser.getStatus() == Status.INACTIVE) {
+                    throw new RuntimeException("Your registration was not approved by admin.");
+                }
             }
-            if (dbUser.getStatus() == Status.INACTIVE) {
-                throw new RuntimeException("Your registration was not approved by admin.");
-            }
+
+            // Delete old token first
+            refreshTokenRepository.deleteByUsername(dbUser.getEmail());
+
+            // save refresh token in DB
+            RefreshToken token = new RefreshToken();
+            token.setToken(refreshToken);
+            token.setUsername(dbUser.getEmail());
+            token.setExpiryDate(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7));
+
+            refreshTokenRepository.save(token);
+
+            return new AuthResponse(
+                    accessToken,
+                    refreshToken,
+                    dbUser.getEmail(),
+                    dbUser.getRole().name());
         }
-
-
-        //Delete old token first
-        refreshTokenRepository.deleteByUsername(dbUser.getEmail());
-
-        //save refresh token in DB
-        RefreshToken token=new RefreshToken();
-        token.setToken(refreshToken);
-        token.setUsername(dbUser.getEmail());
-        token.setExpiryDate(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7));
-
-        refreshTokenRepository.save(token);
-
-        return new AuthResponse(
-            accessToken,
-            refreshToken,
-            dbUser.getEmail(),
-            dbUser.getRole().name()
-        );
-        }
-            
 
         throw new RuntimeException("Invalid credentials");
     }
 
-
-
     @Override
     public User findByEmail(String email) {
-    return userRepository.findByEmail(email)
-        .orElseThrow(() -> new RuntimeException("User not found"));
-}
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
 }

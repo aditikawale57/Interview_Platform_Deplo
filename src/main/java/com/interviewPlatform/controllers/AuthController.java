@@ -20,7 +20,7 @@ import com.interviewPlatform.entities.User;
 import com.interviewPlatform.repositories.BlackListedTokenRepository;
 import com.interviewPlatform.repositories.RefreshTokenRepository;
 import com.interviewPlatform.services.UserService;
-import com.interviewPlatform.services.Impl.JWTService;
+import com.interviewPlatform.security.jwt.JWTService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
